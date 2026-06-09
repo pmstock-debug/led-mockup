@@ -1,0 +1,815 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Login Overlay ── */
+#loginOverlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #0d1117;
+  display: flex; align-items: center; justify-content: center;
+}
+.login-box {
+  width: 340px;
+  background: #161b22;
+  border: 0.5px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 36px 32px 28px;
+  display: flex; flex-direction: column; gap: 20px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+}
+.login-logo {
+  text-align: center;
+}
+.login-logo-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px; border-radius: 12px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #185FA5 100%);
+  font-size: 24px; margin-bottom: 14px;
+  box-shadow: 0 4px 16px rgba(24,95,165,0.4);
+}
+.login-title {
+  font-size: 17px; font-weight: 700; color: #e2e8f0;
+  letter-spacing: -0.3px;
+}
+.login-sub {
+  font-size: 12px; color: rgba(255,255,255,0.38);
+  margin-top: 4px;
+}
+.login-fields { display: flex; flex-direction: column; gap: 10px; }
+.lf-label { font-size: 11px; color: rgba(255,255,255,0.5); margin-bottom: 4px; letter-spacing: 0.04em; }
+.lf-input {
+  width: 100%; background: #0d1117;
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: 7px; padding: 9px 12px;
+  font-size: 13px; color: #e2e8f0;
+  outline: none; transition: border-color 0.15s;
+}
+.lf-input:focus { border-color: #185FA5; box-shadow: 0 0 0 3px rgba(24,95,165,0.2); }
+.login-btn {
+  width: 100%; padding: 10px;
+  background: linear-gradient(135deg, #185FA5, #1a6fc4);
+  border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 600; color: #fff;
+  cursor: pointer; transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+}
+.login-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+.login-btn:active { transform: translateY(0); opacity: 1; }
+.login-err {
+  font-size: 11px; color: #f87171;
+  background: rgba(239,68,68,0.1); border: 0.5px solid rgba(239,68,68,0.25);
+  border-radius: 6px; padding: 7px 10px;
+  text-align: center; display: none;
+}
+.login-err.on { display: block; }
+.login-footer { font-size: 10px; color: rgba(255,255,255,0.2); text-align: center; }
+
+/* ── User badge (top-right after login) ── */
+#userBadge {
+  display: none; align-items: center; gap: 6px;
+  margin-left: auto;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.1);
+  border-radius: 5px; padding: 3px 8px;
+  font-size: 10px; color: rgba(255,255,255,0.5);
+  cursor: pointer;
+}
+#userBadge:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #f87171; }
+
+.app { display: grid; grid-template-columns: 1fr 290px; min-height: 640px; }
+.canvas-area { background: #111827; border-radius: var(--border-radius-lg) 0 0 var(--border-radius-lg); display: flex; flex-direction: column; overflow: hidden; }
+.canvas-wrap { flex: 1; position: relative; }
+#mc { display: block; }
+.toolbar { display: flex; align-items: center; gap: 5px; padding: 7px 10px; background: rgba(0,0,0,0.55); border-bottom: 0.5px solid rgba(255,255,255,0.07); flex-wrap: wrap; }
+.tb { background: rgba(255,255,255,0.07); border: 0.5px solid rgba(255,255,255,0.15); color: #e2e8f0; font-size: 11px; padding: 4px 9px; border-radius: 5px; cursor: pointer; white-space: nowrap; }
+.tb:hover { background: rgba(255,255,255,0.13); }
+.tb.on { background: rgba(99,179,237,0.25); border-color: #63b3ed; color: #63b3ed; }
+.tb.rec { background: rgba(239,68,68,0.2); border-color: #ef4444; color: #ef4444; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:0.5} }
+.tb-sep { width: 0.5px; height: 16px; background: rgba(255,255,255,0.1); margin: 0 1px; }
+.sb { padding: 4px 12px; font-size: 11px; color: rgba(255,255,255,0.38); background: rgba(0,0,0,0.35); text-align: center; }
+.panel { background: var(--color-background-primary); border-left: 0.5px solid var(--color-border-tertiary); border-radius: 0 var(--border-radius-lg) var(--border-radius-lg) 0; display: flex; flex-direction: column; overflow: hidden; }
+.ph { padding: 0 16px; border-bottom: 0.5px solid var(--color-border-tertiary); background: var(--color-background-secondary); display: flex; align-items: center; min-height: 48px; }
+.ph-title { font-size: 13px; font-weight: 600; color: var(--color-text-primary); }
+.pb { flex: 1; overflow-y: auto; padding: 12px 14px; display: flex; flex-direction: column; gap: 11px; }
+.fl { font-size: 11px; color: var(--color-text-secondary); margin-bottom: 4px; display: flex; justify-content: space-between; align-items: center; }
+.fg { display: flex; flex-direction: column; }
+.uz { border: 1.5px dashed var(--color-border-secondary); border-radius: 6px; padding: 9px 10px; text-align: center; cursor: pointer; font-size: 11px; color: var(--color-text-secondary); }
+.uz:hover { border-color: #63b3ed; } .uz.ok { border-style: solid; border-color: #22c55e; color: #16a34a; }
+.uz.vid { border-color: #a855f7; color: #9333ea; }
+input[type=text],input[type=number] { width: 100%; border: 0.5px solid var(--color-border-tertiary); border-radius: 5px; padding: 5px 7px; font-size: 12px; background: var(--color-background-primary); color: var(--color-text-primary); }
+input[type=range] { width: 100%; accent-color: #63b3ed; }
+input[type=color] { width: 100%; height: 30px; border: 0.5px solid var(--color-border-tertiary); border-radius: 5px; cursor: pointer; padding: 2px 3px; background: var(--color-background-primary); }
+select { width: 100%; border: 0.5px solid var(--color-border-tertiary); border-radius: 5px; padding: 5px 7px; font-size: 12px; background: var(--color-background-primary); color: var(--color-text-primary); }
+.sl { display: flex; flex-direction: column; gap: 4px; max-height: 100px; overflow-y: auto; }
+.si { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0.5px solid var(--color-border-tertiary); border-radius: 5px; font-size: 11px; cursor: pointer; background: var(--color-background-secondary); }
+.si:hover,.si.sel { border-color: #63b3ed; background: rgba(99,179,237,0.07); }
+.sx { margin-left: auto; color: #e24b4a; cursor: pointer; font-size: 13px; }
+.ebtn { border: none; border-radius: 6px; padding: 9px; font-size: 12px; font-weight: 500; cursor: pointer; width: 100%; }
+.ebtn.jpg { background: #185FA5; color: #fff; } .ebtn.jpg:hover { background: #0C447C; }
+.ebtn.mp4 { background: #7c3aed; color: #fff; } .ebtn.mp4:hover { background: #6d28d9; }
+.ebtn.stop { background: #dc2626; color: #fff; }
+.div { border: none; border-top: 0.5px solid var(--color-border-tertiary); }
+.stit { font-size: 10px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
+.hint { font-size: 10px; color: var(--color-text-secondary); line-height: 1.5; }
+.cg { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.cb { border: 0.5px solid var(--color-border-tertiary); border-radius: 5px; padding: 6px 8px; background: var(--color-background-secondary); }
+.cl { font-size: 10px; color: var(--color-text-secondary); margin-bottom: 3px; display: flex; align-items: center; gap: 3px; }
+.cd { width: 7px; height: 7px; border-radius: 50%; }
+.cxy { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.cxy input { font-size: 11px; padding: 3px 5px; border: 0.5px solid var(--color-border-tertiary); border-radius: 4px; background: var(--color-background-primary); color: var(--color-text-primary); width: 100%; }
+.tab-row { display: flex; border-bottom: 0.5px solid var(--color-border-tertiary); flex-wrap: wrap; }
+.tab { flex: 1; text-align: center; padding: 6px 2px; font-size: 10px; color: var(--color-text-secondary); cursor: pointer; border-bottom: 2px solid transparent; min-width: 44px; }
+.tab.on { color: #63b3ed; border-bottom-color: #63b3ed; }
+.tab-c { display: none; flex-direction: column; gap: 10px; }
+.tab-c.on { display: flex; }
+.vb { display: flex; gap: 5px; margin-top: 4px; }
+.vb button { flex:1;background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:5px;padding:5px;font-size:13px;cursor:pointer; }
+.vb button:hover { border-color:#63b3ed; }
+.vbadge { display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 6px;border-radius:3px; }
+.vbadge.vid { background:rgba(168,85,247,0.12);color:#9333ea;border:0.5px solid rgba(168,85,247,0.3); }
+.vbadge.img { background:rgba(34,197,94,0.1);color:#16a34a;border:0.5px solid rgba(34,197,94,0.25); }
+.vbadge.txt { background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary); }
+.rec-bar { background:rgba(239,68,68,0.1);border:0.5px solid rgba(239,68,68,0.3);border-radius:6px;padding:8px 10px;display:none;flex-direction:column;gap:5px; }
+.rec-bar.on { display:flex; }
+.rec-dot { width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;animation:pulse 1s infinite; }
+.prog-wrap { background:rgba(0,0,0,0.1);border-radius:3px;height:4px;overflow:hidden; }
+.prog-fill { height:100%;background:#ef4444;border-radius:3px;transition:width 0.3s; }
+.r2 { display:grid;grid-template-columns:1fr 1fr;gap:7px; }
+.toggle-row { display:flex;align-items:center;gap:8px; }
+.toggle-row label { font-size:11px;color:var(--color-text-secondary); }
+.adj-box { background:var(--color-background-secondary);border:0.5px solid var(--color-border-tertiary);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:9px; }
+.adj-title { font-size:11px;font-weight:600;margin-bottom:2px; }
+.adj-row { display:flex;flex-direction:column;gap:3px; }
+.adj-label { font-size:11px;color:var(--color-text-secondary);display:flex;justify-content:space-between;align-items:center; }
+.adj-val { font-weight:500;color:var(--color-text-primary);min-width:40px;text-align:right; }
+.dim-btn-row { display:grid;grid-template-columns:1fr 1fr;gap:7px; }
+.dim-btn { border:none;border-radius:6px;padding:8px 6px;font-size:11px;font-weight:500;cursor:pointer; }
+.dim-btn.on-btn { background:#22c55e;color:#fff; }
+.dim-btn.off-btn { background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-tertiary); }
+
+/* ── Sticky real-time measurement bar (always visible) ── */
+.rt-sticky {
+  border-top: 0.5px solid var(--color-border-tertiary);
+  background: var(--color-background-secondary);
+  padding: 8px 14px;
+  display: flex;
+  gap: 0;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.rt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.rt-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-secondary); }
+.rt-label.active { color: #22c55e; }
+.rt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+}
+.rt-cell {
+  background: var(--color-background-primary);
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: 5px;
+  padding: 5px 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.rt-cell.active { border-color: rgba(34,197,94,0.4); background: rgba(34,197,94,0.05); }
+.rt-key { font-size: 9px; color: var(--color-text-secondary); }
+.rt-num { font-size: 13px; font-weight: 700; color: var(--color-text-secondary); line-height: 1.2; }
+.rt-num.active { color: #22c55e; }
+.rt-unit-small { font-size: 9px; color: var(--color-text-secondary); }
+</style>
+
+<!-- ── Login Overlay ── -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">💡</div>
+      <div class="login-title">Push Media LED Sign</div>
+      <div class="login-sub">กรุณาเข้าสู่ระบบเพื่อใช้งาน</div>
+    </div>
+    <div class="login-fields">
+      <div>
+        <div class="lf-label">USERNAME</div>
+        <input class="lf-input" id="loginUser" type="text" placeholder="ชื่อผู้ใช้" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPass').focus()">
+      </div>
+      <div>
+        <div class="lf-label">PASSWORD</div>
+        <input class="lf-input" id="loginPass" type="password" placeholder="รหัสผ่าน" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+    </div>
+    <div class="login-err" id="loginErr">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+    <button class="login-btn" onclick="doLogin()">เข้าสู่ระบบ</button>
+    <div class="login-footer">Push Media Co., Ltd. — Internal Tool</div>
+  </div>
+</div>
+
+<div class="app">
+<div class="canvas-area">
+  <div class="toolbar">
+    <span style="font-size:10px;color:rgba(255,255,255,0.38)">โหมด:</span>
+    <button class="tb on" id="mPlace" onclick="setMode('place')">+ วาง</button>
+    <button class="tb" id="mMove" onclick="setMode('move')">เลื่อน</button>
+    <button class="tb" id="mWarp" onclick="setMode('warp')">4 จุด</button>
+    <button class="tb" id="mRuler" onclick="setMode('ruler')" style="color:#fbbf24">📏 วัด</button>
+    <div class="tb-sep"></div>
+    <button class="tb" onclick="zoomBy(1.15)">+</button>
+    <button class="tb" onclick="zoomBy(0.87)">−</button>
+    <button class="tb" onclick="resetView()">รีเซ็ต</button>
+    <div class="tb-sep"></div>
+    <button class="tb" id="gBtn" onclick="toggleGrid()">กริด</button>
+    <button class="tb" id="playAllBtn" onclick="togglePlayAll()" style="color:#a855f7">▶ เล่น</button>
+    <button class="tb" id="recBtn" onclick="startRecording()">⏺ บันทึก</button>
+    <button class="tb" onclick="deleteSelected()" style="color:#f87171">ลบป้าย</button>
+    <div id="userBadge" onclick="doLogout()">👤 <span id="userLabel"></span> · ออก</div>
+  </div>
+  <div class="canvas-wrap"><canvas id="mc"></canvas></div>
+  <div class="sb" id="sb">อัปโหลดรูปอาคาร แล้วคลิกเพื่อวางป้าย</div>
+</div>
+
+<div class="panel">
+  <div class="ph"><span class="ph-title">Push Media LED Sign Mockup</span></div>
+
+  <!-- scrollable tab area -->
+  <div class="pb">
+    <div class="fg">
+      <div class="stit">รูปอาคาร</div>
+      <div style="height:3px"></div>
+      <div class="uz" id="bZone" onclick="document.getElementById('bIn').click()">คลิกอัปโหลดรูปอาคาร</div>
+      <input type="file" id="bIn" accept="image/*" style="display:none" onchange="loadBuilding(this)">
+    </div>
+    <hr class="div">
+    <div class="tab-row">
+      <div class="tab on" onclick="switchTab('media')">สื่อ</div>
+      <div class="tab" onclick="switchTab('border')">ขอบ</div>
+      <div class="tab" onclick="switchTab('measure')">📏 วัด</div>
+      <div class="tab" onclick="switchTab('dim')">↔ ขนาด</div>
+      <div class="tab" onclick="switchTab('signs')">ป้าย</div>
+    </div>
+
+    <!-- TAB: MEDIA -->
+    <div class="tab-c on" id="tab-media">
+      <div class="fg">
+        <div class="fl"><span style="font-weight:500">เนื้อหาป้าย</span><span id="mBadge" class="vbadge txt">ข้อความ</span></div>
+        <div class="uz" id="vZone" onclick="document.getElementById('vIn').click()">วิดีโอ — .mp4 .webm .mov</div>
+        <input type="file" id="vIn" accept="video/*" style="display:none" onchange="loadVideo(this)">
+        <div style="height:4px"></div>
+        <div class="uz" id="aZone" onclick="document.getElementById('aIn').click()">รูปภาพ — Ad Image</div>
+        <input type="file" id="aIn" accept="image/*" style="display:none" onchange="loadAd(this)">
+        <div style="height:4px"></div>
+        <input type="text" id="txt" value="LED SIGN" placeholder="ข้อความ">
+      </div>
+      <div class="fg" id="vidCtrl" style="display:none">
+        <div class="fl"><span style="color:#9333ea;font-weight:500">ควบคุมวิดีโอ</span></div>
+        <div class="vb"><button onclick="vidPlay()">▶</button><button onclick="vidPause()">⏸</button><button onclick="vidStop()">⏹</button><button onclick="vidMute()" id="muteBtn">🔊</button></div>
+        <div class="adj-row" style="margin-top:6px"><div class="adj-label"><span>ความเร็ว</span><span id="speedV">1×</span></div><input type="range" min="0.25" max="3" step="0.25" value="1" id="speed" oninput="setSpeed(this.value)"></div>
+        <div class="adj-row"><div class="adj-label"><span>Seek</span><span id="seekV">0s</span></div><input type="range" min="0" max="100" value="0" id="seek" oninput="setSeek(this.value)"></div>
+        <div class="toggle-row"><input type="checkbox" id="loopChk" checked onchange="setLoop(this.checked)" style="accent-color:#9333ea"><label for="loopChk">วนซ้ำ</label></div>
+      </div>
+      <div class="adj-box">
+        <div class="adj-title" style="color:#9333ea">🎨 ปรับภาพสื่อ</div>
+        <div class="adj-row"><div class="adj-label"><span>ความสว่าง</span><span class="adj-val" id="brightV">100%</span></div><input type="range" min="0" max="200" value="100" id="brightSlider" oninput="document.getElementById('brightV').textContent=this.value+'%';applyAdj();redraw()"></div>
+        <div class="adj-row"><div class="adj-label"><span>คอนทราสต์</span><span class="adj-val" id="contrastV">100%</span></div><input type="range" min="0" max="200" value="100" id="contrastSlider" oninput="document.getElementById('contrastV').textContent=this.value+'%';applyAdj();redraw()"></div>
+        <div class="adj-row"><div class="adj-label"><span>ความสดสี</span><span class="adj-val" id="saturV">100%</span></div><input type="range" min="0" max="300" value="100" id="saturSlider" oninput="document.getElementById('saturV').textContent=this.value+'%';applyAdj();redraw()"></div>
+        <div class="adj-row"><div class="adj-label"><span>ความโปร่งใส</span><span class="adj-val" id="transV">0%</span></div><input type="range" min="0" max="95" value="0" id="transSlider" oninput="document.getElementById('transV').textContent=this.value+'%';applyAdj();redraw()"></div>
+        <button class="tb" style="font-size:10px;padding:4px 10px;width:fit-content" onclick="resetAdj()">↺ รีเซ็ต</button>
+      </div>
+    </div>
+
+    <!-- TAB: BORDER -->
+    <div class="tab-c" id="tab-border">
+      <div class="adj-box">
+        <div class="adj-title" style="color:#f59e0b">🖼 เส้นขอบป้าย LED</div>
+        <div class="adj-row"><div class="adj-label"><span>ขนาดเส้นขอบ</span><span class="adj-val" id="borderWV">0px</span></div><input type="range" min="0" max="30" value="0" step="0.5" id="borderWSlider" oninput="document.getElementById('borderWV').textContent=this.value+'px';applyBorder();redraw()"></div>
+        <div class="adj-row"><div class="adj-label"><span>สีเส้นขอบ</span><span class="adj-val" id="borderColorHex">#ffffff</span></div><input type="color" id="borderColor" value="#ffffff" style="margin-top:4px" oninput="document.getElementById('borderColorHex').textContent=this.value;applyBorder();redraw()"></div>
+        <div class="adj-row"><div class="adj-label"><span>ความโปร่งใสขอบ</span><span class="adj-val" id="borderOpV">100%</span></div><input type="range" min="10" max="100" value="100" id="borderOpSlider" oninput="document.getElementById('borderOpV').textContent=this.value+'%';applyBorder();redraw()"></div>
+        <div class="adj-row"><div class="adj-label" style="margin-bottom:4px"><span>รูปแบบเส้น</span></div><select id="borderStyle" onchange="applyBorder();redraw()"><option value="solid">Solid</option><option value="dashed">Dashed</option><option value="dotted">Dotted</option><option value="double">Double</option></select></div>
+        <button class="tb" style="font-size:10px;padding:4px 10px;width:fit-content" onclick="resetBorder()">↺ รีเซ็ต</button>
+      </div>
+    </div>
+
+    <!-- TAB: MEASURE -->
+    <div class="tab-c" id="tab-measure">
+      <div class="adj-box">
+        <div class="adj-title" style="color:#fbbf24">📏 เส้นอ้างอิง 1 เมตร</div>
+        <div class="hint">คลิก 2 จุดบนภาพที่รู้ว่าระยะ 1 เมตร ผลวัดอัพเดต real-time ทุกครั้งที่ลากจุด 4 มุม</div>
+        <button class="tb on" style="width:100%;text-align:center;padding:7px" onclick="startDrawRef()">📐 วางเส้นอ้างอิง 1 เมตร</button>
+        <button class="tb" style="width:100%;text-align:center;padding:5px;color:#f87171" onclick="clearRef()">ลบเส้นอ้างอิง</button>
+        <div id="refPxRow" style="display:none;font-size:10px;color:#22c55e;padding:3px 0">✓ เส้นอ้างอิงพร้อม — <span id="refPxVal">—</span></div>
+      </div>
+    </div>
+
+    <!-- TAB: DIM -->
+    <div class="tab-c" id="tab-dim">
+      <div class="adj-box">
+        <div class="adj-title" style="color:#63b3ed">↔ Arrow Dimensions</div>
+        <div class="hint">แสดงลูกศรบอกขนาด W×H บนป้าย</div>
+        <div class="dim-btn-row">
+          <button class="dim-btn on-btn" id="dimOnBtn" onclick="setDim(true)">✓ ใส่ขนาด</button>
+          <button class="dim-btn off-btn" id="dimOffBtn" onclick="setDim(false)">✗ ไม่ใส่</button>
+        </div>
+        <div class="adj-row" style="margin-top:4px"><div class="adj-label"><span>สีลูกศร</span><span class="adj-val" id="dimColorHex">#ffffff</span></div><input type="color" id="dimColor" value="#ffffff" style="margin-top:4px" oninput="document.getElementById('dimColorHex').textContent=this.value;redraw()"></div>
+        <div class="adj-row"><div class="adj-label"><span>ขนาด font</span><span class="adj-val" id="dimFontV">14px</span></div><input type="range" min="8" max="32" value="14" id="dimFont" oninput="document.getElementById('dimFontV').textContent=this.value+'px';redraw()"></div>
+        <div class="hint">หน่วย: เมตร (ถ้าตั้งเส้นอ้างอิงแล้ว) หรือ px</div>
+      </div>
+    </div>
+
+    <!-- TAB: SIGNS -->
+    <div class="tab-c" id="tab-signs">
+      <div class="sl" id="sl"><div class="hint">ยังไม่มีป้าย</div></div>
+    </div>
+
+    <hr class="div">
+    <div class="stit">Export</div>
+    <div class="rec-bar" id="recBar">
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#ef4444"><span class="rec-dot"></span><span>กำลังบันทึก... <span id="recTimer">0s</span></span></div>
+      <div class="prog-wrap"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      <div style="font-size:10px;color:var(--color-text-secondary)">กด "หยุดบันทึก" เมื่อต้องการจบ</div>
+    </div>
+    <div id="exportSettings">
+      <div class="r2" style="margin-bottom:7px">
+        <div class="fg"><div class="fl">ความละเอียด</div><select id="resSelect"><option value="1">เต็ม (1×)</option><option value="0.75">75%</option><option value="0.5">50%</option></select></div>
+        <div class="fg"><div class="fl">ระยะเวลา (วิ)</div><input type="number" id="recDur" value="10" min="1" max="120" style="padding:5px 7px;font-size:12px;border:0.5px solid var(--color-border-tertiary);border-radius:5px;background:var(--color-background-primary);color:var(--color-text-primary)"></div>
+      </div>
+      <div class="fg"><div class="fl">Bitrate</div><select id="bitrateSelect"><option value="4000000">4 Mbps</option><option value="8000000" selected>8 Mbps</option><option value="16000000">16 Mbps</option></select></div>
+    </div>
+    <button class="ebtn jpg" onclick="exportJPG()" style="margin-top:4px">📷 Export JPG</button>
+    <button class="ebtn mp4" id="exportVidBtn" onclick="startRecording()">🎬 Export Video</button>
+    <button class="ebtn stop" id="stopRecBtn" style="display:none" onclick="stopRecording()">⏹ หยุดบันทึก</button>
+  </div>
+
+  <!-- ── STICKY real-time measurement strip (always visible) ── -->
+  <div class="rt-sticky" id="rtStrip">
+    <div class="rt-header">
+      <span class="rt-label" id="rtStripLabel">📐 ขนาดป้าย (เลือกป้ายเพื่อวัด)</span>
+      <span style="font-size:9px;color:var(--color-text-secondary)" id="rtStripUnit"></span>
+    </div>
+    <div class="rt-grid">
+      <div class="rt-cell" id="rtCellW"><div class="rt-key">กว้าง (W)</div><div class="rt-num" id="rtW">—</div></div>
+      <div class="rt-cell" id="rtCellH"><div class="rt-key">สูง (H)</div><div class="rt-num" id="rtH">—</div></div>
+      <div class="rt-cell" id="rtCellA"><div class="rt-key">พื้นที่</div><div class="rt-num" id="rtA">—</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const cvs=document.getElementById('mc'),ctx=cvs.getContext('2d');
+
+// ── Auth — Google Sheets ─────────────────────────────────────
+const _SHEET_ID  = '18EnmQehyWIigmTJ6GQN_rWC3LskFyEXSzZpgbGWcQUs';
+const _SHEET_TAB = 'User_Mockup';
+const _API_KEY   = 'AIzaSyBR1QtEzZi7wC-2o-pukZXj82ldYJFccsQ';
+
+(function initAuth(){
+  const saved = sessionStorage.getItem('pm_user');
+  if(saved){ unlockApp(saved); }
+})();
+
+async function fetchUsers(){
+  const range = encodeURIComponent(`${_SHEET_TAB}!A2:B`);
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${_SHEET_ID}/values/${range}?key=${_API_KEY}`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('Sheet fetch failed: '+res.status);
+  const data = await res.json();
+  const map = {};
+  (data.values||[]).forEach(row=>{ if(row[0]&&row[1]) map[row[0].trim()]=row[1].trim(); });
+  return map;
+}
+
+async function doLogin(){
+  const u   = document.getElementById('loginUser').value.trim();
+  const p   = document.getElementById('loginPass').value;
+  const err = document.getElementById('loginErr');
+  const btn = document.querySelector('.login-btn');
+
+  if(!u||!p){ showLoginErr('กรุณากรอก Username และ Password'); return; }
+
+  btn.textContent='กำลังตรวจสอบ...'; btn.disabled=true;
+  try {
+    const users = await fetchUsers();
+    if(users[u] && users[u]===p){
+      err.classList.remove('on');
+      sessionStorage.setItem('pm_user', u);
+      unlockApp(u);
+    } else {
+      showLoginErr('❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+      document.getElementById('loginPass').value='';
+      document.getElementById('loginPass').focus();
+    }
+  } catch(e){
+    showLoginErr('⚠️ ไม่สามารถเชื่อมต่อได้ กรุณาลองใหม่');
+    console.error(e);
+  } finally {
+    btn.textContent='เข้าสู่ระบบ'; btn.disabled=false;
+  }
+}
+
+function showLoginErr(msg){
+  const err=document.getElementById('loginErr');
+  err.textContent=msg; err.classList.add('on');
+  const box=document.querySelector('.login-box');
+  box.style.transition='transform 0.07s';
+  let s=0;const shk=setInterval(()=>{box.style.transform=`translateX(${s%2===0?-6:6}px)`;s++;if(s>5){clearInterval(shk);box.style.transform='';}},70);
+}
+
+function unlockApp(username){
+  document.getElementById('loginOverlay').style.display='none';
+  const badge=document.getElementById('userBadge');
+  badge.style.display='flex';
+  document.getElementById('userLabel').textContent=username;
+  initCvs();
+}
+function doLogout(){
+  if(!confirm('ออกจากระบบ?'))return;
+  sessionStorage.removeItem('pm_user');
+  location.reload();
+}
+// ── End Auth ─────────────────────────────────────────────────
+let bImg=null,adImg=null,signs=[],sel=null,mode='place';
+let vx=0,vy=0,vz=1,showGrid=false,drag=null,dragCornerIdx=-1;
+let rafId=null,mediaRecorder=null,recChunks=[],recTimerInterval=null,allPlaying=false;
+const HR=8,CC=['#f59e0b','#22c55e','#3b82f6','#ec4899'];
+let wmImg=null;
+const WM_SIZE=0.15,WM_ALPHA=0.80;
+let refLine=null,refPoint1=null;
+let showDim=true;
+
+// ── Persistent offscreen canvases (avoid GC churn every frame) ──
+const _warpRaw      = document.createElement('canvas');
+const _warpFiltered = document.createElement('canvas');
+const _warpRawCtx   = _warpRaw.getContext('2d');
+const _warpFiltCtx  = _warpFiltered.getContext('2d');
+
+(function(){const img=new Image();img.onload=()=>{wmImg=img;redraw();};img.onerror=()=>{wmImg=null;};img.src='/mnt/user-data/uploads/logo_2.jpg';})();
+
+function drawWatermark(ec,cw,ch){if(!wmImg)return;const w=Math.round(cw*WM_SIZE),mg=Math.round(cw*0.015),h=Math.round(w*(wmImg.naturalHeight/wmImg.naturalWidth));ec.save();ec.globalAlpha=WM_ALPHA;ec.drawImage(wmImg,cw-w-mg,ch-h-mg,w,h);ec.restore();}
+function drawWatermarkScreen(){if(!wmImg||!bImg)return;const iw=bImg.width*vz,mg=Math.round(iw*0.015),w=Math.round(iw*WM_SIZE),h=Math.round(w*(wmImg.naturalHeight/wmImg.naturalWidth));ctx.save();ctx.globalAlpha=WM_ALPHA;ctx.drawImage(wmImg,vx+iw-w-mg,vy+bImg.height*vz-h-mg,w,h);ctx.restore();}
+
+// ── Ruler ─────────────────────────────────────────────────────
+function pxPerMeter(){if(!refLine)return null;return Math.hypot(refLine.bx-refLine.ax,refLine.by-refLine.ay);}
+function getSignMetrics(s){const cs=s.corners;const wPx=((Math.hypot(cs[1].x-cs[0].x,cs[1].y-cs[0].y)+Math.hypot(cs[3].x-cs[2].x,cs[3].y-cs[2].y))/2);const hPx=((Math.hypot(cs[2].x-cs[0].x,cs[2].y-cs[0].y)+Math.hypot(cs[3].x-cs[1].x,cs[3].y-cs[1].y))/2);return{wPx,hPx};}
+
+// ── Real-time strip update — called inside every redraw() ─────
+function updateRTStrip(){
+  const labelEl=document.getElementById('rtStripLabel');
+  const unitEl=document.getElementById('rtStripUnit');
+  const wEl=document.getElementById('rtW'),hEl=document.getElementById('rtH'),aEl=document.getElementById('rtA');
+  const cW=document.getElementById('rtCellW'),cH=document.getElementById('rtCellH'),cA=document.getElementById('rtCellA');
+
+  if(!sel){
+    labelEl.textContent='📐 ขนาดป้าย (เลือกป้ายเพื่อวัด)';labelEl.className='rt-label';
+    unitEl.textContent='';
+    [wEl,hEl,aEl].forEach(e=>{e.textContent='—';e.className='rt-num';});
+    [cW,cH,cA].forEach(e=>e.className='rt-cell');
+    return;
+  }
+
+  const{wPx,hPx}=getSignMetrics(sel);
+  const ppm=pxPerMeter();
+  labelEl.textContent='📐 ขนาดป้าย (real-time)';labelEl.className='rt-label active';
+  [cW,cH,cA].forEach(e=>e.className='rt-cell active');
+  [wEl,hEl,aEl].forEach(e=>e.className='rt-num active');
+
+  if(ppm){
+    const wM=(wPx/ppm).toFixed(2),hM=(hPx/ppm).toFixed(2),aM=(wPx*hPx/ppm/ppm).toFixed(2);
+    wEl.textContent=wM+' ม.';hEl.textContent=hM+' ม.';aEl.textContent=aM+' ตร.ม.';
+    unitEl.textContent='1 ม. = '+Math.round(ppm)+' px';
+  } else {
+    wEl.textContent=Math.round(wPx)+' px';hEl.textContent=Math.round(hPx)+' px';aEl.textContent=Math.round(wPx*hPx)+' px²';
+    unitEl.textContent='(ยังไม่ตั้งเส้นอ้างอิง)';
+  }
+}
+
+function startDrawRef(){setMode('ruler');refPoint1=null;document.getElementById('sb').textContent='📐 คลิกจุดที่ 1 บนภาพ (จุดเริ่มต้น 1 ม.)';}
+function clearRef(){refLine=null;refPoint1=null;document.getElementById('refPxRow').style.display='none';redraw();}
+function drawRefLine(){if(!refLine)return;const a=i2s(refLine.ax,refLine.ay),b=i2s(refLine.bx,refLine.by);ctx.save();ctx.strokeStyle='#fbbf24';ctx.lineWidth=2;ctx.setLineDash([6,3]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([]);[a,b].forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fillStyle='#fbbf24';ctx.fill();});const mx=(a.x+b.x)/2,my=(a.y+b.y)/2-14;ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(mx-44,my-10,88,20);ctx.fillStyle='#fbbf24';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`1 ม. = ${Math.round(pxPerMeter())}px`,mx,my);ctx.restore();}
+function drawRefPoint1(){if(!refPoint1)return;const s=i2s(refPoint1.x,refPoint1.y);ctx.save();ctx.beginPath();ctx.arc(s.x,s.y,6,0,Math.PI*2);ctx.fillStyle='#fbbf24';ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();}
+
+// ── Adj ───────────────────────────────────────────────────────
+function applyAdj(){if(!sel)return;sel.brightness=parseInt(document.getElementById('brightSlider').value);sel.contrast=parseInt(document.getElementById('contrastSlider').value);sel.saturation=parseInt(document.getElementById('saturSlider').value);sel.transparency=parseInt(document.getElementById('transSlider').value);}
+function syncAdj(){const b=sel?sel.brightness??100:100,c=sel?sel.contrast??100:100,s=sel?sel.saturation??100:100,t=sel?sel.transparency??0:0;document.getElementById('brightSlider').value=b;document.getElementById('brightV').textContent=b+'%';document.getElementById('contrastSlider').value=c;document.getElementById('contrastV').textContent=c+'%';document.getElementById('saturSlider').value=s;document.getElementById('saturV').textContent=s+'%';document.getElementById('transSlider').value=t;document.getElementById('transV').textContent=t+'%';}
+function resetAdj(){if(sel){sel.brightness=100;sel.contrast=100;sel.saturation=100;sel.transparency=0;}syncAdj();redraw();}
+function getFilter(sign){return `brightness(${(sign.brightness??100)/100}) contrast(${(sign.contrast??100)/100}) saturate(${(sign.saturation??100)/100})`;}
+
+// ── Border ────────────────────────────────────────────────────
+function applyBorder(){if(!sel)return;sel.borderWidth=parseFloat(document.getElementById('borderWSlider').value);sel.borderColor=document.getElementById('borderColor').value;sel.borderOpacity=parseInt(document.getElementById('borderOpSlider').value)/100;sel.borderStyle=document.getElementById('borderStyle').value;}
+function syncBorder(){const bw=sel?sel.borderWidth??0:0,bc=sel?sel.borderColor??'#ffffff':'#ffffff',bo=sel?Math.round((sel.borderOpacity??1)*100):100,bs=sel?sel.borderStyle??'solid':'solid';document.getElementById('borderWSlider').value=bw;document.getElementById('borderWV').textContent=bw+'px';document.getElementById('borderColor').value=bc;document.getElementById('borderColorHex').textContent=bc;document.getElementById('borderOpSlider').value=bo;document.getElementById('borderOpV').textContent=bo+'%';document.getElementById('borderStyle').value=bs;}
+function resetBorder(){if(sel){sel.borderWidth=0;sel.borderColor='#ffffff';sel.borderOpacity=1;sel.borderStyle='solid';}syncBorder();redraw();}
+function hexToRgba(hex,alpha){const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);return `rgba(${r},${g},${b},${alpha})`;}
+function drawQuadBorder(ec,cs,sign){const bw=sign.borderWidth??0;if(bw<=0)return;const color=hexToRgba(sign.borderColor??'#ffffff',sign.borderOpacity??1);const style=sign.borderStyle??'solid';ec.save();ec.strokeStyle=color;ec.lineWidth=bw;ec.lineJoin='round';ec.lineCap='round';if(style==='dashed')ec.setLineDash([bw*4,bw*2]);else if(style==='dotted')ec.setLineDash([bw,bw*2]);else ec.setLineDash([]);ec.beginPath();ec.moveTo(cs[0].x,cs[0].y);ec.lineTo(cs[1].x,cs[1].y);ec.lineTo(cs[3].x,cs[3].y);ec.lineTo(cs[2].x,cs[2].y);ec.closePath();ec.stroke();if(style==='double'){ec.setLineDash([]);ec.lineWidth=Math.max(1,bw*0.3);const ins=bw*0.7;function op(a,b2,c2,d,t){const dx1=b2.x-a.x,dy1=b2.y-a.y,l1=Math.hypot(dx1,dy1)||1;const dx2=d.x-a.x,dy2=d.y-a.y,l2=Math.hypot(dx2,dy2)||1;const nx=(-dy1/l1+(-dy2/l2))/2,ny=(dx1/l1+dx2/l2)/2,nl=Math.hypot(nx,ny)||1;return{x:a.x+(nx/nl)*t,y:a.y+(ny/nl)*t};}const p0=op(cs[0],cs[1],cs[0],cs[2],ins),p1=op(cs[1],cs[3],cs[1],cs[0],-ins),p2=op(cs[2],cs[0],cs[2],cs[3],ins),p3=op(cs[3],cs[2],cs[3],cs[1],-ins);ec.beginPath();ec.moveTo(p0.x,p0.y);ec.lineTo(p1.x,p1.y);ec.lineTo(p3.x,p3.y);ec.lineTo(p2.x,p2.y);ec.closePath();ec.stroke();}ec.setLineDash([]);ec.restore();}
+
+// ── Dim arrows ────────────────────────────────────────────────
+function setDim(on){showDim=on;document.getElementById('dimOnBtn').className='dim-btn '+(on?'on-btn':'off-btn');document.getElementById('dimOffBtn').className='dim-btn '+(on?'off-btn':'on-btn');redraw();}
+function drawArrowDim(ec,cs,sign,toScreen){
+  if(!showDim)return;const ppm=pxPerMeter();const color=document.getElementById('dimColor').value||'#ffffff';const fontSize=parseInt(document.getElementById('dimFont').value)||14;
+  const{wPx,hPx}=getSignMetrics(sign);const wLabel=ppm?`${(wPx/ppm).toFixed(2)}m`:`${Math.round(wPx)}px`;const hLabel=ppm?`${(hPx/ppm).toFixed(2)}m`:`${Math.round(hPx)}px`;
+  ec.save();ec.strokeStyle=color;ec.fillStyle=color;ec.lineWidth=toScreen?Math.max(1,vz*1.5):1.5;ec.font=`600 ${fontSize}px sans-serif`;ec.textAlign='center';ec.textBaseline='middle';
+  const aw=toScreen?Math.max(6,vz*8):8;
+  function drawArrow(x1,y1,x2,y2,label){const ang=Math.atan2(y2-y1,x2-x1);const mx=(x1+x2)/2,my=(y1+y2)/2;ec.beginPath();ec.moveTo(x1,y1);ec.lineTo(x2,y2);ec.stroke();[[x1,y1,ang],[x2,y2,ang+Math.PI]].forEach(([px,py,a])=>{ec.beginPath();ec.moveTo(px,py);ec.lineTo(px+Math.cos(a+0.4)*aw,py+Math.sin(a+0.4)*aw);ec.lineTo(px+Math.cos(a-0.4)*aw,py+Math.sin(a-0.4)*aw);ec.closePath();ec.fill();});const tw=ec.measureText(label).width+8;ec.save();ec.fillStyle='rgba(0,0,0,0.6)';ec.fillRect(mx-tw/2,my-fontSize/2-2,tw,fontSize+4);ec.fillStyle=color;ec.fillText(label,mx,my);ec.restore();}
+  const off=toScreen?Math.max(16,vz*20):20;const tno=[-(cs[1].y-cs[0].y),cs[1].x-cs[0].x],tnl=Math.hypot(...tno)||1;drawArrow(cs[0].x+(tno[0]/tnl)*off,cs[0].y+(tno[1]/tnl)*off,cs[1].x+(tno[0]/tnl)*off,cs[1].y+(tno[1]/tnl)*off,wLabel);const ln=[-(cs[2].y-cs[0].y),cs[2].x-cs[0].x],lnl=Math.hypot(...ln)||1;drawArrow(cs[0].x-(ln[0]/lnl)*off,cs[0].y-(ln[1]/lnl)*off,cs[2].x-(ln[0]/lnl)*off,cs[2].y-(ln[1]/lnl)*off,hLabel);ec.restore();
+}
+
+// ── WebGL perspective-warp renderer ──────────────────────────
+// One shared WebGL canvas + compiled shaders — GPU does all the work.
+// Falls back to CPU strip method if WebGL is unavailable.
+const _gl_cvs = document.createElement('canvas');
+const _gl = _gl_cvs.getContext('webgl',{premultipliedAlpha:false,antialias:false}) ||
+             _gl_cvs.getContext('experimental-webgl',{premultipliedAlpha:false,antialias:false});
+
+let _glProg=null, _glTex=null, _glBuf=null;
+
+if(_gl){
+  // Vertex shader: pass through clip-space position + UV
+  const VS=`
+    attribute vec2 a_pos;
+    attribute vec3 a_uvw;   // homogeneous UVs for perspective-correct interpolation
+    varying vec3 v_uvw;
+    void main(){
+      gl_Position = vec4(a_pos, 0.0, 1.0);
+      v_uvw = a_uvw;
+    }`;
+  // Fragment shader: perspective-divide UVs, apply brightness/contrast/saturation
+  const FS=`
+    precision mediump float;
+    uniform sampler2D u_tex;
+    uniform float u_bright, u_contrast, u_satur, u_alpha;
+    varying vec3 v_uvw;
+    void main(){
+      vec2 uv = v_uvw.xy / v_uvw.z;
+      if(uv.x<0.0||uv.x>1.0||uv.y<0.0||uv.y>1.0){discard;}
+      vec4 c = texture2D(u_tex, uv);
+      // brightness
+      c.rgb *= u_bright;
+      // contrast: pivot at 0.5
+      c.rgb = (c.rgb - 0.5) * u_contrast + 0.5;
+      // saturation: mix with luminance
+      float lum = dot(c.rgb, vec3(0.299,0.587,0.114));
+      c.rgb = mix(vec3(lum), c.rgb, u_satur);
+      c.rgb = clamp(c.rgb, 0.0, 1.0);
+      gl_FragColor = vec4(c.rgb * u_alpha, u_alpha * c.a);
+    }`;
+  function mkShader(type,src){const s=_gl.createShader(type);_gl.shaderSource(s,src);_gl.compileShader(s);return s;}
+  _glProg=_gl.createProgram();
+  _gl.attachShader(_glProg,mkShader(_gl.VERTEX_SHADER,VS));
+  _gl.attachShader(_glProg,mkShader(_gl.FRAGMENT_SHADER,FS));
+  _gl.linkProgram(_glProg);
+  _gl.useProgram(_glProg);
+  // Cache locations once
+  _glProg._aPos =_gl.getAttribLocation(_glProg,'a_pos');
+  _glProg._aUVW =_gl.getAttribLocation(_glProg,'a_uvw');
+  _glProg._uTex =_gl.getUniformLocation(_glProg,'u_tex');
+  _glProg._uBri =_gl.getUniformLocation(_glProg,'u_bright');
+  _glProg._uCon =_gl.getUniformLocation(_glProg,'u_contrast');
+  _glProg._uSat =_gl.getUniformLocation(_glProg,'u_satur');
+  _glProg._uAlp =_gl.getUniformLocation(_glProg,'u_alpha');
+  _glTex=_gl.createTexture();
+  _gl.bindTexture(_gl.TEXTURE_2D,_glTex);
+  _gl.texParameteri(_gl.TEXTURE_2D,_gl.TEXTURE_MIN_FILTER,_gl.LINEAR);
+  _gl.texParameteri(_gl.TEXTURE_2D,_gl.TEXTURE_MAG_FILTER,_gl.LINEAR);
+  _gl.texParameteri(_gl.TEXTURE_2D,_gl.TEXTURE_WRAP_S,_gl.CLAMP_TO_EDGE);
+  _gl.texParameteri(_gl.TEXTURE_2D,_gl.TEXTURE_WRAP_T,_gl.CLAMP_TO_EDGE);
+  _glBuf=_gl.createBuffer();
+}
+
+// Compute perspective-correct homogeneous UVs for a quad
+// cs: [{x,y}×4] in canvas-image space (bx/by already subtracted)
+// order: TL, TR, BL, BR  →  UV corners (0,0),(1,0),(0,1),(1,1)
+function _computeHUVs(cs,w,h){
+  // Solve for the homography scale factors d0..d3 so that
+  // perspective interpolation is correct across the quad.
+  // Based on: https://www.reedbeta.com/blog/quadrilateral-interpolation-part-2/
+  const [p0,p1,p2,p3]=cs; // TL TR BL BR
+  function cross2(ax,ay,bx,by){return ax*by-ay*bx;}
+  const d=cross2(p3.x-p0.x,p3.y-p0.y,p1.x-p2.x,p1.y-p2.y)||1e-9;
+  const t=cross2(p2.x-p0.x,p2.y-p0.y,p1.x-p2.x,p1.y-p2.y)/d;
+  const s=cross2(p2.x-p0.x,p2.y-p0.y,p3.x-p0.x,p3.y-p0.y)/d;
+  // w-values for each corner
+  const w0=(1-t)+(1-s); // TL
+  const w1=t+(1-s);     // TR (unused directly, derived)
+  const w2=(1-t)+s;     // BL
+  const w3=t+s;         // BR
+  // Homogeneous UV triplets [u*q, v*q, q]
+  return [
+    [0,   0,   w0],  // TL
+    [w1,  0,   w1],  // TR
+    [0,   w2,  w2],  // BL
+    [w3,  w3,  w3],  // BR
+  ];
+}
+
+function drawWarpGL(ec,cs,src,sign,bx,by,bw,bh){
+  if(_gl_cvs.width!==bw||_gl_cvs.height!==bh){_gl_cvs.width=bw;_gl_cvs.height=bh;}
+  _gl.viewport(0,0,bw,bh);
+  _gl.clearColor(0,0,0,0);
+  _gl.clear(_gl.COLOR_BUFFER_BIT);
+  _gl.enable(_gl.BLEND);
+  _gl.blendFunc(_gl.ONE,_gl.ONE_MINUS_SRC_ALPHA);
+
+  // Upload video/image frame as texture
+  _gl.bindTexture(_gl.TEXTURE_2D,_glTex);
+  _gl.texImage2D(_gl.TEXTURE_2D,0,_gl.RGBA,_gl.RGBA,_gl.UNSIGNED_BYTE,src);
+
+  // Convert corner positions to clip-space [-1,1]
+  // cs is already in bounding-box-local coords
+  const clip=cs.map(c=>({x:(c.x/bw)*2-1, y:1-(c.y/bh)*2}));
+  const huvs=_computeHUVs(cs,bw,bh);
+
+  // Interleaved buffer: x,y, u*q,v*q,q — two triangles (TL,TR,BL) + (TR,BL,BR)
+  const idx=[[0,1,2],[1,2,3]];
+  const verts=[];
+  for(const tri of idx){
+    for(const i of tri){
+      verts.push(clip[i].x, clip[i].y, huvs[i][0], huvs[i][1], huvs[i][2]);
+    }
+  }
+  _gl.bindBuffer(_gl.ARRAY_BUFFER,_glBuf);
+  _gl.bufferData(_gl.ARRAY_BUFFER,new Float32Array(verts),_gl.DYNAMIC_DRAW);
+
+  const stride=5*4;
+  _gl.enableVertexAttribArray(_glProg._aPos);
+  _gl.vertexAttribPointer(_glProg._aPos,2,_gl.FLOAT,false,stride,0);
+  _gl.enableVertexAttribArray(_glProg._aUVW);
+  _gl.vertexAttribPointer(_glProg._aUVW,3,_gl.FLOAT,false,stride,2*4);
+
+  _gl.uniform1i(_glProg._uTex,0);
+  _gl.uniform1f(_glProg._uBri,(sign.brightness??100)/100);
+  _gl.uniform1f(_glProg._uCon,(sign.contrast??100)/100);
+  _gl.uniform1f(_glProg._uSat,(sign.saturation??100)/100);
+  const alpha=1-((sign.transparency??0)/100);
+  _gl.uniform1f(_glProg._uAlp,alpha);
+
+  _gl.drawArrays(_gl.TRIANGLES,0,6);
+
+  // Blit WebGL result onto the 2D canvas
+  ec.save();
+  ec.globalAlpha=1; // alpha already baked in shader
+  ec.imageSmoothingEnabled=true;
+  ec.imageSmoothingQuality='high';
+  ec.drawImage(_gl_cvs,bx,by);
+  ec.restore();
+}
+
+// CPU fallback (strip method — kept for export canvas which can't use the shared GL canvas)
+function isFilterDefault(sign){return(sign.brightness??100)===100&&(sign.contrast??100)===100&&(sign.saturation??100)===100;}
+function drawWarpCPU(ec,cs,src,sign,bx,by,bw,bh){
+  const iw=src.videoWidth||src.width,ih=src.videoHeight||src.height;
+  const lcs=cs.map(c=>({x:c.x,y:c.y})); // already bx/by-offset by caller
+  if(_warpRaw.width!==bw||_warpRaw.height!==bh){_warpRaw.width=bw;_warpRaw.height=bh;}
+  const rc=_warpRawCtx;
+  rc.fillStyle='#000';rc.fillRect(0,0,bw,bh);
+  rc.imageSmoothingEnabled=true;rc.imageSmoothingQuality='high';
+  const ROWS=Math.max(Math.ceil(bh),32);
+  for(let si=0;si<ROWS;si++){
+    const t0=si/ROWS,t1=(si+1)/ROWS;
+    const lx0=lcs[0].x+(lcs[2].x-lcs[0].x)*t0,ly0=lcs[0].y+(lcs[2].y-lcs[0].y)*t0;
+    const rx0=lcs[1].x+(lcs[3].x-lcs[1].x)*t0,ry0=lcs[1].y+(lcs[3].y-lcs[1].y)*t0;
+    const lx1=lcs[0].x+(lcs[2].x-lcs[0].x)*t1,ly1=lcs[0].y+(lcs[2].y-lcs[0].y)*t1;
+    const rx1=lcs[1].x+(lcs[3].x-lcs[1].x)*t1,ry1=lcs[1].y+(lcs[3].y-lcs[1].y)*t1;
+    const sy0=t0*ih,stripH=(t1-t0)*ih;
+    if(stripH<=0||Math.hypot(rx0-lx0,ry0-ly0)<=0)continue;
+    rc.save();
+    rc.beginPath();rc.moveTo(lx0,ly0);rc.lineTo(rx0,ry0);rc.lineTo(rx1,ry1);rc.lineTo(lx1,ly1);rc.closePath();rc.clip();
+    rc.transform((rx0-lx0)/iw,(ry0-ly0)/iw,(lx1-lx0)/stripH,(ly1-ly0)/stripH,lx0-sy0*(lx1-lx0)/stripH,ly0-sy0*(ly1-ly0)/stripH);
+    rc.drawImage(src,0,sy0,iw,stripH,0,sy0,iw,stripH);
+    rc.restore();
+  }
+  const alpha=1-((sign.transparency??0)/100);
+  ec.save();ec.globalAlpha=alpha;ec.imageSmoothingEnabled=true;ec.imageSmoothingQuality='high';
+  const origCs=cs.map(c=>({x:c.x+bx,y:c.y+by}));
+  ec.beginPath();ec.moveTo(origCs[0].x,origCs[0].y);ec.lineTo(origCs[1].x,origCs[1].y);ec.lineTo(origCs[3].x,origCs[3].y);ec.lineTo(origCs[2].x,origCs[2].y);ec.closePath();ec.clip();
+  if(isFilterDefault(sign)){
+    ec.drawImage(_warpRaw,bx,by);
+  } else {
+    if(_warpFiltered.width!==bw||_warpFiltered.height!==bh){_warpFiltered.width=bw;_warpFiltered.height=bh;}
+    _warpFiltCtx.filter=getFilter(sign);_warpFiltCtx.drawImage(_warpRaw,0,0);_warpFiltCtx.filter='none';
+    ec.drawImage(_warpFiltered,bx,by);
+  }
+  ec.restore();
+}
+
+function drawWarpOpaque(ec,cs,src,sign){
+  const iw=src.videoWidth||src.width,ih=src.videoHeight||src.height;
+  if(!iw||!ih)return;
+  const xs=cs.map(c=>c.x),ys=cs.map(c=>c.y);
+  const bx=Math.floor(Math.min(...xs))-1,by=Math.floor(Math.min(...ys))-1;
+  const bw=Math.ceil(Math.max(...xs))-bx+2,bh=Math.ceil(Math.max(...ys))-by+2;
+  if(bw<=0||bh<=0)return;
+  // Shift corners to bounding-box-local space
+  const lcs=cs.map(c=>({x:c.x-bx,y:c.y-by}));
+  if(_gl && _glProg){
+    drawWarpGL(ec,lcs,src,sign,bx,by,bw,bh);
+  } else {
+    drawWarpCPU(ec,lcs,src,sign,bx,by,bw,bh);
+  }
+}
+function drawQuad(ec,cs){ec.beginPath();ec.moveTo(cs[0].x,cs[0].y);ec.lineTo(cs[1].x,cs[1].y);ec.lineTo(cs[3].x,cs[3].y);ec.lineTo(cs[2].x,cs[2].y);ec.closePath();}
+function drawSignOnCtx(ec,sign,sc,toScreen){const cs=sign.corners.map(c=>toScreen?i2s(c.x,c.y):{x:c.x*sc,y:c.y*sc});const{text='LED',video,adImg:si}=sign;const src=video&&video.readyState>=2?video:si||null;if(src){drawWarpOpaque(ec,cs,src,sign);}else{ec.save();ec.globalAlpha=1;drawQuad(ec,cs);ec.fillStyle='rgba(10,10,10,0.88)';ec.fill();const mcx=(cs[0].x+cs[1].x+cs[2].x+cs[3].x)/4,mcy=(cs[0].y+cs[1].y+cs[2].y+cs[3].y)/4;const h=Math.hypot(cs[2].x-cs[0].x,cs[2].y-cs[0].y)*0.28;const ang=Math.atan2(cs[1].y-cs[0].y,cs[1].x-cs[0].x);ec.save();ec.translate(mcx,mcy);ec.rotate(ang);ec.fillStyle='rgba(255,255,255,0.95)';ec.font=`500 ${h}px sans-serif`;ec.textAlign='center';ec.textBaseline='middle';ec.fillText(text||'LED',0,0);ec.restore();ec.restore();}drawQuadBorder(ec,cs,sign);if(toScreen&&showDim)drawArrowDim(ec,cs,sign,toScreen);}
+function drawSign(ec,sign,toScreen){drawSignOnCtx(ec,sign,1,toScreen);if(sign.video&&!sign.video.paused&&toScreen){const cs=sign.corners.map(c=>i2s(c.x,c.y));ec.save();ec.globalAlpha=0.85;ec.fillStyle='#a855f7';ec.beginPath();ec.arc(cs[0].x+8*vz,cs[0].y+6*vz,4*vz,0,Math.PI*2);ec.fill();ec.restore();}if(sel&&sel.id===sign.id){const cs=sign.corners.map(c=>toScreen?i2s(c.x,c.y):c);ec.save();drawQuad(ec,cs);ec.strokeStyle='rgba(99,179,237,0.7)';ec.lineWidth=1.5;ec.setLineDash([5,3]);ec.stroke();ec.setLineDash([]);ec.restore();}}
+
+function redraw(){
+  ctx.clearRect(0,0,cvs.width,cvs.height);ctx.globalAlpha=1;ctx.fillStyle='#111827';ctx.fillRect(0,0,cvs.width,cvs.height);
+  if(bImg){ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(bImg,vx,vy,bImg.width*vz,bImg.height*vz);}
+  else{ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillRect(0,0,cvs.width,cvs.height);ctx.fillStyle='rgba(255,255,255,0.14)';ctx.font='13px sans-serif';ctx.textAlign='center';ctx.fillText('อัปโหลดรูปอาคารจากแผงด้านขวา',cvs.width/2,cvs.height/2);}
+  if(showGrid&&bImg){ctx.save();ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=0.5;const gs=50*vz;for(let x=vx%gs;x<cvs.width;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cvs.height);ctx.stroke();}for(let y=vy%gs;y<cvs.height;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cvs.width,y);ctx.stroke();}ctx.restore();}
+  ctx.globalAlpha=1;
+  signs.forEach(s=>drawSign(ctx,s,true));
+  drawRefLine();drawRefPoint1();
+  drawWatermarkScreen();ctx.globalAlpha=1;
+  if(sel&&mode==='warp'){sel.corners.forEach((c,i)=>{const sp=i2s(c.x,c.y);ctx.beginPath();ctx.arc(sp.x,sp.y,HR,0,Math.PI*2);ctx.fillStyle=CC[i];ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=1.5;ctx.stroke();});}
+  if(sel&&mode==='move'){const cs=sel.corners.map(c=>i2s(c.x,c.y));drawQuad(ctx,cs);ctx.strokeStyle='rgba(99,179,237,0.45)';ctx.lineWidth=1.5;ctx.setLineDash([5,3]);ctx.stroke();ctx.setLineDash([]);}
+  // ← Real-time update on every redraw (including drag)
+  updateRTStrip();
+}
+
+function initCvs(){
+  if(document.getElementById('loginOverlay').style.display!=='none')return;
+  const w=cvs.parentElement.clientWidth,h=cvs.parentElement.clientHeight||520;cvs.width=w;cvs.height=h;redraw();}
+window.addEventListener('resize',initCvs);
+function switchTab(t){['media','border','measure','dim','signs'].forEach(n=>document.getElementById('tab-'+n).classList.toggle('on',n===t));document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('on',['media','border','measure','dim','signs'][i]===t));}
+function setMode(m){mode=m;['Place','Move','Warp','Ruler'].forEach(n=>{const el=document.getElementById('m'+n);if(el)el.classList.remove('on');});const el=document.getElementById('m'+m.charAt(0).toUpperCase()+m.slice(1));if(el)el.classList.add('on');cvs.style.cursor=m==='ruler'?'crosshair':m==='place'?'crosshair':m==='move'?'grab':'default';updSB();}
+function updSB(){const msgs={place:'คลิกบนอาคารเพื่อวางป้าย',move:'ลากป้ายเพื่อย้าย — ผลวัดอัพเดต real-time',warp:'ลากจุดสีเพื่อบิดป้าย — ผลวัดอัพเดต real-time',ruler:'📐 คลิกจุดที่ 1 บนภาพ'};document.getElementById('sb').textContent=bImg?(msgs[mode]||msgs.place):'อัปโหลดรูปอาคารก่อน';}
+function s2i(sx,sy){return{x:(sx-vx)/vz,y:(sy-vy)/vz};}
+function i2s(ix,iy){return{x:ix*vz+vx,y:iy*vz+vy};}
+function fitView(){if(!bImg)return;const sx=cvs.width/bImg.width,sy=cvs.height/bImg.height;vz=Math.min(sx,sy)*0.95;vx=(cvs.width-bImg.width*vz)/2;vy=(cvs.height-bImg.height*vz)/2;}
+function zoomBy(f){const cx=cvs.width/2,cy=cvs.height/2;vx=cx-(cx-vx)*f;vy=cy-(cy-vy)*f;vz*=f;redraw();}
+function resetView(){fitView();redraw();}
+function toggleGrid(){showGrid=!showGrid;document.getElementById('gBtn').classList.toggle('on',showGrid);redraw();}
+function loadBuilding(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{bImg=img;fitView();redraw();updSB();};img.src=e.target.result;};r.readAsDataURL(f);document.getElementById('bZone').textContent='✓ '+f.name;document.getElementById('bZone').classList.add('ok');}
+function loadVideo(inp){const f=inp.files[0];if(!f)return;const vid=document.createElement('video');vid.src=URL.createObjectURL(f);vid.loop=true;vid.muted=false;vid.playsInline=true;vid.crossOrigin='anonymous';vid.onloadedmetadata=()=>{if(sel){if(sel.video)sel.video.pause();sel.video=vid;sel.adImg=null;sel.mediaType='video';document.getElementById('vidCtrl').style.display='';document.getElementById('mBadge').className='vbadge vid';document.getElementById('mBadge').textContent='วิดีโอ';document.getElementById('seek').max=Math.floor(vid.duration);vid.play();startRaf();}};document.getElementById('vZone').textContent='✓ '+f.name;document.getElementById('vZone').classList.add('vid');}
+function loadAd(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{adImg=img;if(sel){if(sel.video){sel.video.pause();sel.video=null;}sel.adImg=adImg;sel.mediaType='image';document.getElementById('vidCtrl').style.display='none';document.getElementById('mBadge').className='vbadge img';document.getElementById('mBadge').textContent='รูปภาพ';}redraw();};img.src=e.target.result;};r.readAsDataURL(f);document.getElementById('aZone').textContent='✓ '+f.name;document.getElementById('aZone').classList.add('ok');}
+function startRaf(){if(rafId)return;function loop(){rafId=requestAnimationFrame(loop);redraw();}loop();}
+function stopRaf(){if(rafId){cancelAnimationFrame(rafId);rafId=null;}}
+function anyVidPlaying(){return signs.some(s=>s.video&&!s.video.paused);}
+function vidPlay(){if(sel&&sel.video){sel.video.play();startRaf();}}
+function vidPause(){if(sel&&sel.video){sel.video.pause();if(!anyVidPlaying()&&!mediaRecorder)stopRaf();}}
+function vidStop(){if(sel&&sel.video){sel.video.pause();sel.video.currentTime=0;if(!anyVidPlaying()&&!mediaRecorder)stopRaf();redraw();}}
+function vidMute(){if(!sel||!sel.video)return;sel.video.muted=!sel.video.muted;document.getElementById('muteBtn').textContent=sel.video.muted?'🔇':'🔊';}
+function setSpeed(v){document.getElementById('speedV').textContent=v+'×';if(sel&&sel.video)sel.video.playbackRate=+v;}
+function setSeek(v){document.getElementById('seekV').textContent=v+'s';if(sel&&sel.video)sel.video.currentTime=+v;}
+function setLoop(v){if(sel&&sel.video)sel.video.loop=v;}
+function togglePlayAll(){allPlaying=!allPlaying;const btn=document.getElementById('playAllBtn');signs.forEach(s=>{if(s.video){allPlaying?s.video.play():s.video.pause();}});if(allPlaying){startRaf();btn.textContent='⏸ หยุด';}else{if(!anyVidPlaying()&&!mediaRecorder)stopRaf();btn.textContent='▶ เล่น';}}
+
+function hitSign(ix,iy){return[...signs].reverse().find(s=>inQuad(ix,iy,s.corners));}
+function inQuad(px,py,cs){const cross=(ax,ay,bx,by)=>ax*by-ay*bx;const sgn=(p1x,p1y,p2x,p2y,p3x,p3y)=>cross(p2x-p1x,p2y-p1y,p3x-p1x,p3y-p1y)>=0;const[a,b,c,d]=cs;return sgn(a.x,a.y,b.x,b.y,px,py)&&sgn(b.x,b.y,d.x,d.y,px,py)&&sgn(d.x,d.y,c.x,c.y,px,py)&&sgn(c.x,c.y,a.x,a.y,px,py);}
+
+cvs.addEventListener('mousedown',e=>{
+  const r=cvs.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,ip=s2i(mx,my);
+  if(mode==='ruler'){
+    if(!refPoint1){refPoint1={x:ip.x,y:ip.y};document.getElementById('sb').textContent='📐 คลิกจุดที่ 2 (สิ้นสุด 1 ม.)';redraw();}
+    else{refLine={ax:refPoint1.x,ay:refPoint1.y,bx:ip.x,by:ip.y};refPoint1=null;document.getElementById('refPxRow').style.display='';document.getElementById('refPxVal').textContent=Math.round(pxPerMeter())+' px';setMode('place');redraw();}return;
+  }
+  if(mode==='place'){if(bImg)addSign(ip.x,ip.y);return;}
+  if(mode==='warp'&&sel){const hi=sel.corners.findIndex(c=>{const sp=i2s(c.x,c.y);return Math.hypot(sp.x-mx,sp.y-my)<=HR+2;});if(hi>=0){dragCornerIdx=hi;drag={type:'corner'};return;}}
+  const hit=hitSign(ip.x,ip.y);
+  if(hit){selectSign(hit.id);drag={type:'move',mx,my,corners:hit.corners.map(c=>({...c}))};cvs.style.cursor='grabbing';}
+  else{sel=null;updateUI();}
+});
+cvs.addEventListener('mousemove',e=>{
+  const r=cvs.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,ip=s2i(mx,my);
+  if(drag){
+    if(drag.type==='corner'&&dragCornerIdx>=0&&sel){
+      sel.corners[dragCornerIdx]={x:ip.x,y:ip.y};
+      updCornerInputs();
+      redraw(); // ← triggers updateRTStrip() automatically
+    } else if(drag.type==='move'&&sel){
+      const dx=(mx-drag.mx)/vz,dy=(my-drag.my)/vz;
+      sel.corners=drag.corners.map(c=>({x:c.x+dx,y:c.y+dy}));
+      updCornerInputs();
+      redraw(); // ← triggers updateRTStrip() automatically
+    }
+    return;
+  }
+  if(mode==='warp'&&sel){const hc=sel.corners.some(c=>{const sp=i2s(c.x,c.y);return Math.hypot(sp.x-mx,sp.y-my)<=HR+2;});cvs.style.cursor=hc?'grab':'default';}
+  if(bImg&&mode==='place')document.getElementById('sb').textContent=`คลิกเพื่อวางป้าย — (${Math.round(ip.x)},${Math.round(ip.y)})`;
+  if(mode==='ruler'&&refPoint1){redraw();const a=i2s(refPoint1.x,refPoint1.y);ctx.save();ctx.strokeStyle='#fbbf2488';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(mx,my);ctx.stroke();ctx.setLineDash([]);ctx.restore();}
+});
+cvs.addEventListener('mouseup',()=>{drag=null;dragCornerIdx=-1;if(mode!=='ruler')cvs.style.cursor=mode==='place'?'crosshair':mode==='move'?'grab':'default';});
+cvs.addEventListener('wheel',e=>{e.preventDefault();const r=cvs.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,f=e.deltaY>0?0.9:1.1;vx=mx-(mx-vx)*f;vy=my-(my-vy)*f;vz*=f;redraw();},{passive:false});
+
+function makeCorners(cx,cy,w,h){return[{x:cx-w/2,y:cy-h/2},{x:cx+w/2,y:cy-h/2},{x:cx-w/2,y:cy+h/2},{x:cx+w/2,y:cy+h/2}];}
+function addSign(ix,iy){if(!bImg)return;const text=document.getElementById('txt').value;const w=bImg.width*0.24,h=w*0.36;const sign={id:Date.now(),corners:makeCorners(ix,iy,w,h),text,video:null,adImg:null,mediaType:'text',brightness:100,contrast:100,saturation:100,transparency:0,borderWidth:0,borderColor:'#ffffff',borderOpacity:1,borderStyle:'solid',label:text||('ป้าย '+(signs.length+1))};signs.push(sign);sel=sign;document.getElementById('vidCtrl').style.display='none';document.getElementById('mBadge').className='vbadge txt';document.getElementById('mBadge').textContent='ข้อความ';syncAdj();syncBorder();updateUI();}
+function selectSign(id){sel=signs.find(s=>s.id===id)||null;if(sel){document.getElementById('txt').value=sel.text||'';const hv=!!sel.video;document.getElementById('vidCtrl').style.display=hv?'':'none';document.getElementById('mBadge').className='vbadge '+(hv?'vid':sel.adImg?'img':'txt');document.getElementById('mBadge').textContent=hv?'วิดีโอ':sel.adImg?'รูปภาพ':'ข้อความ';if(hv){document.getElementById('seek').max=Math.floor(sel.video.duration)||100;document.getElementById('loopChk').checked=sel.video.loop;document.getElementById('muteBtn').textContent=sel.video.muted?'🔇':'🔊';}syncAdj();syncBorder();updCornerInputs();}updateUI();}
+function deleteSelected(){if(!sel)return;if(sel.video)sel.video.pause();signs=signs.filter(s=>s.id!==sel.id);sel=null;if(!anyVidPlaying()&&!mediaRecorder)stopRaf();updateUI();}
+function updateUI(){updateSignList();updCornerInputs();redraw();}
+function updateSignList(){const el=document.getElementById('sl');if(!signs.length){el.innerHTML='<div class="hint">ยังไม่มีป้าย</div>';return;}el.innerHTML=signs.map(s=>`<div class="si ${sel&&sel.id===s.id?'sel':''}" onclick="selectSign(${s.id})"><span style="font-size:12px">${s.video?'📹':s.adImg?'🖼':'📝'}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${s.label}</span><span class="sx" onclick="event.stopPropagation();delSign(${s.id})">×</span></div>`).join('');}
+function delSign(id){const s=signs.find(x=>x.id===id);if(s&&s.video)s.video.pause();signs=signs.filter(x=>x.id!==id);if(sel&&sel.id===id)sel=null;if(!anyVidPlaying()&&!mediaRecorder)stopRaf();updateUI();}
+function updCornerInputs(){if(!sel)return;sel.corners.forEach((c,i)=>{const xi=document.getElementById('c'+i+'x'),yi=document.getElementById('c'+i+'y');if(xi)xi.value=Math.round(c.x);if(yi)yi.value=Math.round(c.y);});}
+function updCorner(i){if(!sel)return;const x=parseFloat(document.getElementById('c'+i+'x').value),y=parseFloat(document.getElementById('c'+i+'y').value);if(!isNaN(x))sel.corners[i].x=x;if(!isNaN(y))sel.corners[i].y=y;redraw();}
+function resetCorners(){if(!sel)return;const cx=sel.corners.reduce((a,c)=>a+c.x,0)/4,cy=sel.corners.reduce((a,c)=>a+c.y,0)/4;const w=bImg?bImg.width*0.24:200,h=w*0.36;sel.corners=makeCorners(cx,cy,w,h);updCornerInputs();redraw();}
+
+function getSupportedMimeType(){const types=['video/mp4;codecs=h264','video/mp4','video/webm;codecs=h264','video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'];return types.find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';}
+function startRecording(){if(!bImg){alert('กรุณาอัปโหลดรูปอาคารก่อน');return;}if(mediaRecorder)return;const recDuration=parseInt(document.getElementById('recDur').value)||10;const scale=parseFloat(document.getElementById('resSelect').value)||1;const bitrate=parseInt(document.getElementById('bitrateSelect').value)||8000000;const mimeType=getSupportedMimeType();const ext=mimeType.startsWith('video/mp4')?'mp4':'webm';const ew=Math.round(bImg.width*scale),eh=Math.round(bImg.height*scale);const expCvs=document.createElement('canvas');expCvs.width=ew;expCvs.height=eh;const ec=expCvs.getContext('2d');ec.imageSmoothingEnabled=true;ec.imageSmoothingQuality='high';signs.forEach(s=>{if(s.video)s.video.play();});startRaf();const stream=expCvs.captureStream(30);recChunks=[];try{mediaRecorder=new MediaRecorder(stream,{mimeType,videoBitsPerSecond:bitrate});}catch(e){mediaRecorder=new MediaRecorder(stream,{videoBitsPerSecond:bitrate});}mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)recChunks.push(e.data);};mediaRecorder.onstop=()=>{const blob=new Blob(recChunks,{type:mimeType});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='led-mockup.'+ext;a.click();URL.revokeObjectURL(url);recChunks=[];document.getElementById('recBar').classList.remove('on');document.getElementById('exportVidBtn').style.display='';document.getElementById('stopRecBtn').style.display='none';document.getElementById('exportSettings').style.display='';document.getElementById('recBtn').classList.remove('rec');document.getElementById('recBtn').textContent='⏺ บันทึก';clearInterval(recTimerInterval);mediaRecorder=null;};let expRaf;function renderExport(){expRaf=requestAnimationFrame(renderExport);ec.globalAlpha=1;ec.clearRect(0,0,ew,eh);ec.imageSmoothingEnabled=true;ec.imageSmoothingQuality='high';ec.drawImage(bImg,0,0,ew,eh);signs.forEach(s=>drawSignOnCtx(ec,s,scale,false));drawWatermark(ec,ew,eh);ec.globalAlpha=1;}renderExport();mediaRecorder.start(100);const recStart=Date.now();document.getElementById('recBar').classList.add('on');document.getElementById('exportVidBtn').style.display='none';document.getElementById('stopRecBtn').style.display='';document.getElementById('exportSettings').style.display='none';document.getElementById('recBtn').classList.add('rec');document.getElementById('recBtn').textContent='⏺ REC';recTimerInterval=setInterval(()=>{const elapsed=(Date.now()-recStart)/1000,pct=Math.min(100,(elapsed/recDuration)*100);document.getElementById('recTimer').textContent=elapsed.toFixed(1)+'s / '+recDuration+'s';document.getElementById('progFill').style.width=pct+'%';if(elapsed>=recDuration){cancelAnimationFrame(expRaf);stopRecording();}},100);setTimeout(()=>{cancelAnimationFrame(expRaf);if(mediaRecorder&&mediaRecorder.state!=='inactive')stopRecording();},recDuration*1000+300);}
+function stopRecording(){if(!mediaRecorder||mediaRecorder.state==='inactive')return;clearInterval(recTimerInterval);mediaRecorder.stop();}
+function exportJPG(){if(!bImg){alert('กรุณาอัปโหลดรูปอาคารก่อน');return;}const ex=document.createElement('canvas');ex.width=bImg.width;ex.height=bImg.height;const ec=ex.getContext('2d');ec.globalAlpha=1;ec.imageSmoothingEnabled=true;ec.imageSmoothingQuality='high';ec.drawImage(bImg,0,0);signs.forEach(s=>drawSignOnCtx(ec,s,1,false));drawWatermark(ec,bImg.width,bImg.height);ec.globalAlpha=1;const a=document.createElement('a');a.download='led-mockup.jpg';a.href=ex.toDataURL('image/jpeg',0.93);a.click();}
+
+setDim(true);
+redraw();
+</script>
